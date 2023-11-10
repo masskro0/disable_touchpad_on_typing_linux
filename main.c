@@ -1,37 +1,52 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <linux/input.h>
-#include <unistd.h>
-#include <time.h>
-#include <string.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 
+/* Generates the commands for enabling and disabling touchpad. It uses xinput as the system interface.
+ *
+ * @param enable_tp: Pointer to string which will contain the enabling command.
+ * @param disable_tp: Pointer to string which will contain the disabling command.
+ * @param id: String containing the touchpad ID of 'xinput list'. 
+ */
 void generateCommands(char** enable_tp, char** disable_tp, char* id) {
-	char* enable_ = "xinput enable ";
-	char* disable_ = "xinput disable ";
-	int len_enable = strlen(enable_);
-	int len_disable = strlen(disable_);
 	int len_id = strlen(id);
-	*enable_tp = (char*) malloc(len_enable + len_id + 1);
+
+	char* enable_ = "xinput enable ";
+    int len_enable = strlen(enable_);
+    *enable_tp = (char*) malloc(len_enable + len_id + 1);
 	memcpy(*enable_tp, enable_, len_enable);
 	memcpy(*enable_tp + len_enable, id, len_id);
 	(*enable_tp)[len_enable + len_id] = '\0';
+	
+	char* disable_ = "xinput disable ";
+	int len_disable = strlen(disable_);
 	*disable_tp = (char*) malloc(len_disable + len_id + 1);
 	memcpy(*disable_tp, disable_, len_disable);
 	memcpy(*disable_tp + len_disable, id, len_id);
 	(*disable_tp)[len_disable + len_id] = '\0';
 }
 
+/* Determines a >>possible<< keystroke event file. Since xinput lists many keyboards, which are also virtual,
+ * you might get the wrong event file. Use the flag -e 'number' to fix that. The event files are in '/dev/input/'.
+ *
+ * @param event_file: Pointer to string which will contain the event file path.
+ */
 void getEventFile(char** event_file) {
+    // Get the first keyboard ID from 'xinput list'.
     char* get_id_cmd = "xinput --list | cut -d\[ -f1 | grep -i keyboard | egrep -iv 'virtual|video|button|bus' | egrep -o 'id=[0-9]+' | egrep -o '[0-9]+'";
     FILE* fpipe = popen(get_id_cmd, "r");
     size_t n;
     char* keyboardID = NULL;
     getline(&keyboardID, &n, fpipe);
     pclose(fpipe);
-    
+
+    // Get the path to the keystroke event file using the above determined ID.
     char* base_cmd1 = "xinput list-props ";
     char* base_cmd2 = " | grep -o '/dev/input.*' | rev | cut -c 2- | rev";
     char* get_keystrokes_file_cmd = (char*) malloc(strlen(base_cmd1) + strlen(base_cmd2) + sizeof(char) * 3);
@@ -43,8 +58,12 @@ void getEventFile(char** event_file) {
     free(get_keystrokes_file_cmd);
     free(keyboardID);
     pclose(fpipe);
-} 
+}
 
+/* Determine the touchpad ID by using 'xinput list'.
+ *
+ * @param id: Pointer to string which will contain the touchpad ID.
+ */
 void getTouchpadID(char** id) {
 	char* get_id_cmd = "xinput --list --long | grep Touchpad | egrep -o 'id=[0-9]+' | egrep -o '[0-9]+'";
 	FILE* fpipe = popen(get_id_cmd, "r");
@@ -53,25 +72,27 @@ void getTouchpadID(char** id) {
 	pclose(fpipe);
 }
 
-void printHelp(double timeout) {
+/* Print the helper message which is triggered by the -h flag.*/
+void printHelp() {
     printf("-e: ID of the keyboard event, e.g. 12 if your keystrokes are dumped into /dev/input/event12. "
            "This program tries to autodetect your event ID, but if it doesn't work then enter it manually.\n"
            "-h: This helper message.\n"
            "-t: Timeout between the last keystroke and enabling the touchpad in MILLISECONDS. ");
-    printf("Default: %d\n", (int) timeout);
 }
 
+// Determines whether the main loop is running or not.
 static volatile int running = 1;
 
+/* Catches a SIGINT signal and causes the main loop to break.*/
 void onExit() {
     running = 0;
 }
 
 int main(int argc, char* argv[]) {
     signal(SIGINT, onExit);
-    int c;
-	double timeout = 2000.0;
-	int keyboard_event_id = -1;
+    int c;                          // Used for command line parsing.
+	double timeout = 1500.0;        // Timeout between last keystroke and re-enabling the touchpad.
+	int keyboard_event_id = -1;     // Keystroke event ID passed by the user. 
 
 	if (argc < 2)
 	{
@@ -80,7 +101,7 @@ int main(int argc, char* argv[]) {
     while ((c=getopt(argc, argv, "he:t:")) != -1) {
         switch (c) {
             case 'h':
-                printHelp(timeout);
+                printHelp();
                 return 1;
             case 'e':
                 keyboard_event_id = atoi(optarg);
@@ -89,25 +110,25 @@ int main(int argc, char* argv[]) {
                 timeout = atof(optarg);
                 break;
             case '?':
-                printHelp(timeout);
+                printHelp();
                 return 1;
         default:
-            printHelp(timeout);
+            printHelp();
             abort();
         }    
     }
     
-	clock_t begin = clock();
-	clock_t now;
-	double t;
+	clock_t begin = clock();    // Time when keystroke was detected.
+	clock_t now;                // Current time.
+	double diff;                // Difference between now and begin.
 
-	char* id = NULL;
-	getTouchpadID(&id);
+	char* touchpadID = NULL;
+	getTouchpadID(&touchpadID);
 
-	char* enable_tp;
-	char* disable_tp;
-	char* event_file;
-    generateCommands(&enable_tp, &disable_tp, id);
+	char* enable_tp;            // Command to enable the touchpad.
+	char* disable_tp;           // Command to disable the touchpad.
+	char* event_file;           // Path to event file registring the keystrokes.
+    generateCommands(&enable_tp, &disable_tp, touchpadID);
 	if (keyboard_event_id != -1) {
 	    char* base_cmd = "/dev/input/event";
 	    event_file = malloc(strlen(base_cmd) + sizeof(char) * 3);
@@ -117,20 +138,26 @@ int main(int argc, char* argv[]) {
         event_file[strlen(event_file) - 1] = '\0';
 	}
 
-    struct input_event ev;
+    struct input_event ev;      // Handles the keystroke detection.
     int fd = open(event_file, O_RDONLY);
     long flag = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flag | O_NONBLOCK);
 		
 	while (running) {				
+	    // Check for incoming keystrokes.
 		read(fd, &ev, sizeof(ev));
     	if ((ev.type == EV_KEY) && (ev.value == 0)) {
+    	    // Keystroke detected. Disable touchpad.
 		    system(disable_tp);
             begin = clock();
-			t = 0.0;
-			while (t < timeout) {
+			diff = 0.0;
+
+			// Sleep for timeout milliseconds.
+			while (diff < timeout) {
 				now = clock();
-				t = (double)(now - begin) / CLOCKS_PER_SEC * 1000.0;
+				diff = (double)(now - begin) / CLOCKS_PER_SEC * 1000.0;
+
+				// Reset timer when another keystroke was detected.
 				read(fd, &ev, sizeof(ev));
 				if ((ev.type == EV_KEY) && (ev.value == 0)) {
 					begin = clock();
@@ -139,11 +166,12 @@ int main(int argc, char* argv[]) {
 			system(enable_tp);
 		}
 	}
-	
+
+	// System cleanup to avoid memory leaks and enable touchpad again.
     system(enable_tp);
     free(enable_tp);
     free(disable_tp);
     free(event_file);
-	free(id);
+	free(touchpadID);
 	return 0;
 }
