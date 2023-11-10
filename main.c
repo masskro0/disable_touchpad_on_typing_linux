@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <linux/input.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -142,28 +143,36 @@ int main(int argc, char* argv[]) {
     int fd = open(event_file, O_RDONLY);
     long flag = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flag | O_NONBLOCK);
-        
+
+    struct pollfd fds[1];
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+
     while (running) {				
         // Check for incoming keystrokes.
-        read(fd, &ev, sizeof(ev));
-        if ((ev.type == EV_KEY) && (ev.value == 0)) {
-            // Keystroke detected. Disable touchpad.
-            system(disable_tp);
-            begin = clock();
-            diff = 0.0;
-
-            // Sleep for timeout milliseconds.
-            while (diff < timeout) {
-                now = clock();
-                diff = (double)(now - begin) / CLOCKS_PER_SEC * 1000.0;
-
-                // Reset timer when another keystroke was detected.
+        if (poll(fds, 1, 500) > 0) {
+            if (fds[0].revents) {
                 read(fd, &ev, sizeof(ev));
                 if ((ev.type == EV_KEY) && (ev.value == 0)) {
+                    // Keystroke detected. Disable touchpad.
+                    system(disable_tp);
                     begin = clock();
+                    diff = 0.0;
+
+                    // Sleep for timeout milliseconds.
+                    while (diff < timeout) {
+                        now = clock();
+                        diff = (double)(now - begin) / CLOCKS_PER_SEC * 1000.0;
+
+                        // Reset timer when another keystroke was detected.
+                        read(fd, &ev, sizeof(ev));
+                        if ((ev.type == EV_KEY) && (ev.value == 0)) {
+                            begin = clock();
+                        }
+                    }
+                    system(enable_tp);
                 }
             }
-            system(enable_tp);
         }
     }
 
