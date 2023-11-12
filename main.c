@@ -118,10 +118,6 @@ int main(int argc, char* argv[]) {
             abort();
         }    
     }
-    
-    clock_t begin = clock();    // Time when keystroke was detected.
-    clock_t now;                // Current time.
-    double diff;                // Difference between now and begin.
 
     char* touchpadID = NULL;
     getTouchpadID(&touchpadID);
@@ -144,11 +140,18 @@ int main(int argc, char* argv[]) {
     long flag = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flag | O_NONBLOCK);
 
+    // Register file descriptors for polling.
     struct pollfd fds[1];
     fds[0].fd = fd;
     fds[0].events = POLLIN;
+    
+    // Time variables.
+    int sec_last_stroke;
+    int usec_last_stroke;
+    long usec_remaining;
+    struct timeval current;
 
-    while (running) {				
+    while (running) {		
         // Check for incoming keystrokes.
         if (poll(fds, 1, 500) > 0) {
             if (fds[0].revents) {
@@ -156,20 +159,26 @@ int main(int argc, char* argv[]) {
                 if ((ev.type == EV_KEY) && (ev.value == 0)) {
                     // Keystroke detected. Disable touchpad.
                     system(disable_tp);
-                    begin = clock();
-                    diff = 0.0;
-
-                    // Sleep for timeout milliseconds.
-                    while (diff < timeout) {
-                        now = clock();
-                        diff = (double)(now - begin) / CLOCKS_PER_SEC * 1000.0;
-
-                        // Reset timer when another keystroke was detected.
-                        read(fd, &ev, sizeof(ev));
-                        if ((ev.type == EV_KEY) && (ev.value == 0)) {
-                            begin = clock();
+                    usleep(timeout * 1000);
+                    read_remaining_keystrokes:
+                        sec_last_stroke = -1;
+                        usec_last_stroke = -1;
+                        while(read(fd, &ev, sizeof(ev)) != -1) {
+                            // Read remaining keystrokes up to now.
+                            if ((ev.type == EV_KEY) && (ev.value == 0)) {
+                                sec_last_stroke = ev.time.tv_sec;
+                                usec_last_stroke = ev.time.tv_usec;
+                            }
                         }
-                    }
+                        if (sec_last_stroke != -1) {
+                            // Sleep for timeout milliseconds after last keystroke.
+                            gettimeofday(&current, NULL);
+                            usec_remaining = (long)timeout * 1000
+                                           - (current.tv_sec - sec_last_stroke) * 1000000
+                                           - (current.tv_usec - usec_last_stroke);
+                            usleep(usec_remaining);
+                            goto read_remaining_keystrokes;
+                        }
                     system(enable_tp);
                 }
             }
