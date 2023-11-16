@@ -23,6 +23,9 @@ There are 3 additional flags:
   <li>-t: Timeout: Timeout in milliseconds between the last keystroke and re-enabling the touchpad. Default value is 1500. E.g. <b>-t 1500</b></li>
 </ul>
 
+## Start application after booting
+Place the `block-touchpad.desktop` file into `/home/<user>/.config/autostart` and adapt the directory in this file to the one pointing to the binary file. This directory only exists if you're using Gnome as your desktop environment. 
+
 ## Memory Leaks
 Valgrind shows no memory leaks:
 ```
