@@ -20,7 +20,7 @@ There are 3 additional flags:
 <ul>
   <li>-e: ID of the keystroke event file which can be found in /dev/input/. By not providing this argument, the program tries to find the ID automatically. However, if it doesn't succeed, then you have to provide it by yourself with this flag.<br>E.g. <b>-e 12</b></li>
   <li>-h: Helper message</li>
-  <li>-t: Timeout: Timeout in milliseconds between the last keystroke and re-enabling the touchpad. Default value is 1500. E.g. <b>-t 1500</b></li>
+  <li>-t: Timeout: Timeout in milliseconds between the last keystroke and re-enabling the touchpad. Default value is 1000. E.g. <b>-t 1000</b></li>
 </ul>
 
 ## Start application after booting
