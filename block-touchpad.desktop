@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=/home/michael/block_touchpad/block_touchpad
+Comment=Blocks Touchpad While Typing
+Name=Block Touchpad Autostart
+X-MATE-Autostart-Phase=Applications
+X-MATE-Autostart-Delay=2
+X-MATE-Autostart-enabled=true
+X-GNOME-Autostart-Phase=Applications
+X-GNOME-Autostart-Delay=2
+X-GNOME-Autostart-enabled=true

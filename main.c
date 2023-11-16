@@ -92,7 +92,7 @@ void onExit() {
 int main(int argc, char* argv[]) {
     signal(SIGINT, onExit);
     int c;                          // Used for command line parsing.
-    double timeout = 1500.0;        // Timeout between last keystroke and re-enabling the touchpad.
+    double timeout = 1000.0;        // Timeout between last keystroke and re-enabling the touchpad.
     int keyboard_event_id = -1;     // Keystroke event ID passed by the user. 
 
     if (argc < 2)
