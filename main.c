@@ -13,7 +13,7 @@
  *
  * @param enable_tp: Pointer to string which will contain the enabling command.
  * @param disable_tp: Pointer to string which will contain the disabling command.
- * @param id: String containing the touchpad ID of 'xinput list'. 
+ * @param id: String containing the touchpad ID of 'xinput list'.
  */
 void generateCommands(char** enable_tp, char** disable_tp, char* id) {
     int len_id = strlen(id);
@@ -24,7 +24,7 @@ void generateCommands(char** enable_tp, char** disable_tp, char* id) {
     memcpy(*enable_tp, enable_, len_enable);
     memcpy(*enable_tp + len_enable, id, len_id);
     (*enable_tp)[len_enable + len_id] = '\0';
-    
+
     char* disable_ = "xinput disable ";
     int len_disable = strlen(disable_);
     *disable_tp = (char*) malloc(len_disable + len_id + 1);
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, onExit);
     int c;                          // Used for command line parsing.
     double timeout = 1000.0;        // Timeout between last keystroke and re-enabling the touchpad.
-    int keyboard_event_id = -1;     // Keystroke event ID passed by the user. 
+    int keyboard_event_id = -1;     // Keystroke event ID passed by the user.
 
     if (argc < 2)
     {
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
         default:
             printHelp();
             abort();
-        }    
+        }
     }
 
     char* touchpadID = NULL;
@@ -144,14 +144,14 @@ int main(int argc, char* argv[]) {
     struct pollfd fds[1];
     fds[0].fd = fd;
     fds[0].events = POLLIN;
-    
+
     // Time variables.
     int sec_last_stroke;
     int usec_last_stroke;
     long usec_remaining;
     struct timeval current;
 
-    while (running) {		
+    while (running) {
         // Check for incoming keystrokes.
         if (poll(fds, 1, 500) > 0) {
             if (fds[0].revents) {
@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
                                 usec_last_stroke = ev.time.tv_usec;
                             }
                         }
-                        if (sec_last_stroke != -1) {
+                        if (sec_last_stroke > 0) {
                             // Sleep for timeout milliseconds after last keystroke.
                             gettimeofday(&current, NULL);
                             usec_remaining = (long)timeout * 1000
