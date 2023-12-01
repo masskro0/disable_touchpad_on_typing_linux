@@ -5,12 +5,17 @@ Disables the touchpad and touchpad buttons during typing.
 Not in my case. The Gnome setting was not even available no me in the GUI. Changes in some config files didn't work. <br>
 There is an application called "touchpad-indicator", which was triggered with a huge delay and also didn't disable the touchpad buttons. <br>
 This was causing me lots of headaches. BUT NO MORE! <br><br>
-This code is minimal, optimized and should work on any Xorg supported Linux distribution. 
+This code is minimal, optimized and should work on any Xorg or Wayland supported Linux distribution. 
 
 ## Building
-`gcc main.c -o disable_touchpad_while_typing`<br><br>
+### Xorg
+`gcc xorg_touchpad.c -o disable_touchpad_while_typing`<br><br>
 With optimization:<br>
-`gcc main -c -O3 -o disable_touchpad_while_typing`
+`gcc xorg_touchpad.c -O3 -o disable_touchpad_while_typing`
+
+### Wayland
+`gcc wayland_touchpad.c $(pkg-config --libs --cflags glib-2.0) -o disable_touchpad_while_typing`<br><br>
+You need the package <b>libglib2.0-dev</b>. Install it with `sudo apt-get install libglib2.0-dev`
 
 ## Usage
 By using the standard parameters and autodetection of your keyboard and touchpad, use <br>
@@ -29,9 +34,8 @@ Place the `block-touchpad.desktop` file into `/home/<user>/.config/autostart` an
 ## Memory Leaks
 Valgrind shows no memory leaks:
 ```
-valgrind -s --leak-check=full --show-leak-kinds=all ./block_touchpad
+valgrind -s --leak-check=full --show-leak-kinds=all ./disable_touchpad_while_typing_xorg
 
-==17595== 
 ==17595== HEAP SUMMARY:
 ==17595==     in use at exit: 0 bytes in 0 blocks
 ==17595==   total heap usage: 16 allocs, 16 frees, 15,315 bytes allocated
@@ -39,4 +43,15 @@ valgrind -s --leak-check=full --show-leak-kinds=all ./block_touchpad
 ==17595== All heap blocks were freed -- no leaks are possible
 ==17595== 
 ==17595== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+
+------------------------------------------------
+valgrind -s --leak-check=full --show-leak-kinds=all ./disable_touchpad_while_typing_wayland
+
+==8297== HEAP SUMMARY:
+==8297==     in use at exit: 0 bytes in 0 blocks
+==8297==   total heap usage: 10 allocs, 10 frees, 34,260 bytes allocated
+==8297== 
+==8297== All heap blocks were freed -- no leaks are possible
+==8297== 
+==8297== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
 ```
