@@ -147,8 +147,10 @@ int main(int argc, char* argv[]) {
                             usec_remaining = (long)timeout * 1000
                                            - (current.tv_sec - sec_last_stroke) * 1000000
                                            - (current.tv_usec - usec_last_stroke);
-                            usleep(usec_remaining);
-                            goto read_remaining_keystrokes;
+                            if (usec_remaining > 0) {
+                                usleep(usec_remaining);
+                                goto read_remaining_keystrokes;
+                            }
                         }
                     system(enable_tp);
                 }
